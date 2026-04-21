@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>家庭公積金</title>
+
+<!-- SheetJS for Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc,
+    doc, query, orderBy, where, Timestamp, writeBatch, getDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // =============================================
+  // ⚠️ 請填入你的 Firebase 設定
+  // =============================================
+  const firebaseConfig = {
+  apiKey: "AIzaSyBoXcdCoj841NArhqwrvfhpsG5TbBrj3gc",
+  authDomain: "project-2412256879555267902.firebaseapp.com",
+  projectId: "project-2412256879555267902",
+  storageBucket: "project-2412256879555267902.firebasestorage.app",
+  messagingSenderId: "173409919275",
+  appId: "1:173409919275:web:5a38ba8e97f5375d77a56e",
+  measurementId: "G-H8L8V82KN7"
+};
+  // =============================================
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._fb = { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, orderBy, where, Timestamp, writeBatch, getDoc };
+  window._dbReady = true;
+  document.dispatchEvent(new Event('dbReady'));
+</script>
+
+<style>
+:root {
+  --cream:#FAF8F3; --cream2:#F3EFE6; --cream3:#EAE4D8;
+  --brown:#8B6F4E; --brown2:#6B5240;
+  --accent:#C4956A; --accent2:#A87850;
+  --text:#3D2E1E; --text2:#7A6555; --muted:#A89A8A;
+  --green:#5A8A5A; --green-bg:#EDF5ED;
+  --red:#B85A5A; --red-bg:#F5EDED;
+  --blue:#4A7AB5; --blue-bg:#EDF2FB;
+  --border:#DDD5C8;
+  --radius:14px; --rsm:8px;
+  --shadow:0 2px 12px rgba(139,111,78,.10);
+  --glass-shadow: 0 8px 32px rgba(139,111,78,.18), 0 1.5px 0 rgba(255,255,255,.55) inset, 0 -1px 0 rgba(139,111,78,.10) inset;
+  --glass-shadow-hover: 0 12px 36px rgba(139,111,78,.26), 0 2px 0 rgba(255,255,255,.7) inset, 0 -1px 0 rgba(139,111,78,.13) inset;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--cream);color:var(--text);font-family:'Noto Serif TC',Georgia,serif;min-height:100vh;font-size:clamp(14px,4vw,16px);line-height:1.6}
+.app{max-width:480px;margin:0 auto;min-height:100vh}
+
+/* TOP BAR */
+.top-bar{background:rgba(243,239,230,0.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(221,213,200,.6);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.top-bar h1{font-size:clamp(15px,4.5vw,17px);color:var(--brown2);font-weight:700;letter-spacing:1px}
+.top-bar-right{display:flex;align-items:center;gap:8px}
+.role-badge{background:var(--accent);color:#fff;padding:3px 12px;border-radius:20px;font-size:clamp(12px,3.5vw,13px);font-weight:600}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:var(--rsm);padding:4px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit}
+.logout-btn:hover{background:var(--cream3)}
+
+/* SCREENS */
+.screen{display:none;padding:16px}
+.screen.active{display:block}
+
+/* LOGIN */
+#screen-login{padding:0}
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;background:var(--cream)}
+.login-logo{font-size:clamp(36px,9vw,48px);margin-bottom:6px}
+.login-title{font-size:clamp(20px,6vw,26px);color:var(--brown2);font-weight:700;margin-bottom:4px}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:320px;margin-bottom:24px}
+
+/* LIQUID GLASS — role buttons */
+.role-btn{
+  background:rgba(255,251,244,0.72);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1.5px solid rgba(255,255,255,0.72);
+  border-radius:var(--radius);padding:16px 10px;text-align:center;cursor:pointer;
+  transition:all .25s ease;font-family:inherit;
+  box-shadow:var(--glass-shadow);
+}
+.role-btn:hover{
+  background:rgba(255,251,244,0.88);
+  border-color:rgba(196,149,106,0.6);
+  transform:translateY(-3px);
+  box-shadow:var(--glass-shadow-hover);
+}
+.role-btn.selected{
+  background:rgba(255,247,239,0.90);
+  border-color:rgba(196,149,106,0.8);
+  box-shadow:var(--glass-shadow-hover), 0 0 0 2px rgba(196,149,106,.18);
+}
+.role-btn .r-icon{font-size:clamp(22px,6vw,28px);margin-bottom:5px}
+.role-btn .r-name{font-size:clamp(14px,4vw,16px);font-weight:700;color:var(--brown2)}
+.role-btn .r-perm{font-size:11px;color:var(--muted);margin-top:2px}
+.pw-box{width:100%;max-width:320px;margin-bottom:14px}
+.pw-box label{display:block;font-size:13px;color:var(--text2);margin-bottom:5px}
+.pw-input{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:var(--rsm);background:#fff;font-size:clamp(16px,4.5vw,18px);color:var(--text);font-family:inherit;letter-spacing:4px;outline:none;transition:border-color .2s}
+.pw-input:focus{border-color:var(--accent)}
+.btn-login{width:100%;max-width:320px;background:var(--accent);color:#fff;border:none;border-radius:var(--rsm);padding:14px;font-size:clamp(15px,4.5vw,16px);font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-login:hover{background:var(--accent2)}
+.err-msg{color:var(--red);font-size:13px;margin-top:8px;text-align:center}
+
+/* BALANCE — liquid glass */
+.balance-card{
+  background:linear-gradient(135deg, rgba(107,82,64,.88) 0%, rgba(168,120,80,.88) 100%);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border:1.5px solid rgba(255,255,255,.22);
+  border-radius:var(--radius);padding:22px 18px;color:#fff;margin-bottom:18px;
+  box-shadow:0 8px 32px rgba(107,82,64,.32), 0 1.5px 0 rgba(255,255,255,.18) inset;
+  position:relative;overflow:hidden;
+}
+.balance-card::before{
+  content:'';position:absolute;top:-40%;left:-20%;
+  width:70%;height:70%;
+  background:radial-gradient(ellipse, rgba(255,255,255,.13) 0%, transparent 70%);
+  pointer-events:none;
+}
+.balance-label{font-size:11px;opacity:.8;letter-spacing:1px;margin-bottom:3px}
+.balance-amount{font-size:clamp(26px,7vw,36px);font-weight:700}
+.balance-amount.neg{color:#FFB3B3}
+.diff-note{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 12px;margin-top:8px;font-size:13px;backdrop-filter:blur(4px)}
+
+/* MAIN BUTTONS — liquid glass */
+.main-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.main-btn{
+  background:rgba(255,251,244,0.75);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1.5px solid rgba(255,255,255,0.70);
+  border-radius:var(--radius);padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  cursor:pointer;transition:all .22s ease;font-family:inherit;text-align:left;width:100%;
+  box-shadow:var(--glass-shadow);
+}
+.main-btn:hover{
+  background:rgba(255,251,244,0.92);
+  border-color:rgba(196,149,106,0.55);
+  box-shadow:var(--glass-shadow-hover);
+  transform:translateX(3px) translateY(-1px);
+}
+.main-btn:active{transform:translateX(1px) translateY(0);box-shadow:var(--glass-shadow)}
+.main-btn .bi{font-size:22px;flex-shrink:0}
+.main-btn .bt{font-size:clamp(14px,4vw,15px);font-weight:600;color:var(--text)}
+.main-btn .bs{font-size:11px;color:var(--muted);margin-top:1px}
+.main-btn .ba{margin-left:auto;color:var(--muted);font-size:18px;flex-shrink:0}
+
+/* SECTION HEADER */
+.sec-hdr{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.back-btn{background:none;border:none;cursor:pointer;font-size:20px;color:var(--brown);padding:4px;border-radius:6px;transition:background .15s}
+.back-btn:hover{background:var(--cream3)}
+.sec-hdr h2{font-size:clamp(15px,4.5vw,17px);color:var(--brown2);font-weight:700}
+
+/* TABS */
+.tab-row{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px}
+.tab-btn{background:none;border:none;cursor:pointer;padding:9px 14px;font-size:clamp(12px,3.5vw,13px);font-weight:600;color:var(--muted);font-family:inherit;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;white-space:nowrap}
+.tab-btn.active{color:var(--accent2);border-bottom-color:var(--accent2)}
+
+/* FORM */
+.form-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.type-btn{background:var(--cream2);border:1.5px solid var(--border);border-radius:var(--rsm);padding:9px;text-align:center;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;transition:all .2s;color:var(--text2)}
+.type-btn.ai{border-color:var(--green);background:var(--green-bg);color:var(--green)}
+.type-btn.ae{border-color:var(--red);background:var(--red-bg);color:var(--red)}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:12px;color:var(--text2);font-weight:600;margin-bottom:4px}
+.fg select,.fg input[type=text],.fg input[type=number],.fg input[type=date],.fg textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--rsm);background:var(--cream);font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.fg select:focus,.fg input:focus,.fg textarea:focus{border-color:var(--accent);background:#fff}
+.fg textarea{resize:vertical;min-height:60px}
+.role-sel-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.role-sel-row label{font-size:12px;color:var(--text2);font-weight:600;flex-shrink:0}
+.role-sel-row select{flex:1}
+.btn-submit{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--rsm);padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-submit:hover{background:var(--accent2)}
+.btn-submit:disabled{background:var(--muted);cursor:not-allowed}
+
+/* RECORDS */
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.fchip{background:var(--cream2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);transition:all .15s}
+.fchip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.month-bar{background:var(--cream2);border-radius:var(--rsm);padding:9px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;border:1px solid var(--border)}
+.month-bar .mt{font-size:13px;font-weight:700;color:var(--brown2)}
+.month-bar .mn{font-size:13px;font-weight:700}
+.month-bar .mn.pos{color:var(--green)}
+.month-bar .mn.neg{color:var(--red)}
+
+.rec{background:#fff;border-radius:var(--rsm);border:1px solid var(--border);padding:11px 13px;margin-bottom:7px;transition:all .2s}
+.rec.unconf{background:#F5F3F0;border-color:#E0D9CF}
+.rec.deleted-log{background:#FEF9F9;border-color:#F5D0D0;border-style:dashed}
+.rec-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px}
+.rtype{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+.rtype.income{background:var(--green-bg);color:var(--green)}
+.rtype.expense{background:var(--red-bg);color:var(--red)}
+.rtype.deleted{background:#FEE2E2;color:#991B1B}
+.ramt{font-size:clamp(14px,4vw,16px);font-weight:700}
+.ramt.income{color:var(--green)}
+.ramt.expense{color:var(--red)}
+.ramt.deleted{color:var(--muted);text-decoration:line-through}
+.rmeta{font-size:11px;color:var(--muted);display:flex;gap:7px;flex-wrap:wrap;margin-top:3px}
+.rnote{font-size:12px;color:var(--text2);margin-top:3px}
+.raudit{font-size:11px;color:var(--accent2);margin-top:3px;font-style:italic}
+.rconfd{font-size:11px;color:var(--green);font-weight:600}
+.runconf{font-size:11px;color:var(--muted)}
+.rdate-badge{font-size:11px;color:var(--blue);font-weight:600}
+.rrole{font-size:11px;background:var(--cream3);color:var(--text2);padding:1px 7px;border-radius:8px}
+
+.adm-acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.act-btn{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid;cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s;background:#fff}
+.act-btn.confirm{color:var(--green);border-color:var(--green)}
+.act-btn.confirm:hover{background:var(--green-bg)}
+.act-btn.edit{color:var(--accent);border-color:var(--accent)}
+.act-btn.edit:hover{background:#FFF7EF}
+.act-btn.del{color:var(--red);border-color:var(--red)}
+.act-btn.del:hover{background:var(--red-bg)}
+
+/* YEAR TABS */
+.year-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.year-tab{background:var(--cream2);border:1px solid var(--border);border-radius:20px;padding:5px 16px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);font-weight:600;transition:all .15s}
+.year-tab.active{background:var(--brown);border-color:var(--brown);color:#fff}
+
+/* CALENDAR */
+.cal-wrap{background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow)}
+.cal-header{background:var(--cream2);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.cal-header h3{font-size:15px;font-weight:700;color:var(--brown2)}
+.cal-nav{background:none;border:1px solid var(--border);border-radius:var(--rsm);padding:4px 10px;cursor:pointer;font-family:inherit;color:var(--text2);transition:all .15s}
+.cal-nav:hover{background:var(--cream3)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0}
+.cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:8px 0;background:var(--cream2)}
+.cal-day{min-height:52px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:4px;cursor:pointer;transition:background .15s;position:relative}
+.cal-day:nth-child(7n){border-right:none}
+.cal-day:hover{background:var(--cream2)}
+.cal-day.other-month{opacity:.35}
+.cal-day.today{background:#FFF7EF}
+.cal-day .day-num{font-size:12px;font-weight:600;color:var(--text2)}
+.cal-day.today .day-num{color:var(--accent);font-weight:700}
+.cal-event{font-size:10px;background:var(--blue-bg);color:var(--blue);border-radius:4px;padding:1px 4px;margin-top:2px;line-height:1.3;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-event.type-away{background:#FEF3C7;color:#92400E}
+.cal-event.type-guest{background:#EDE9FE;color:#5B21B6}
+
+/* TRANSFER SECTION */
+.transfer-sec{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.btn-transfer{width:100%;background:var(--brown2);color:#fff;border:none;border-radius:var(--rsm);padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-transfer:hover{background:var(--text)}
+.btn-export{width:100%;background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:var(--rsm);padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;margin-bottom:10px}
+.btn-export:hover{background:var(--green);color:#fff}
+
+/* MODAL */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:20px}
+.modal-ov.show{display:flex}
+.modal-box{background:#fff;border-radius:var(--radius);padding:22px 18px;max-width:380px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal-title{font-size:17px;font-weight:700;color:var(--brown2);margin-bottom:8px}
+.modal-body{font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.7;white-space:pre-line}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end}
+.mbtn{padding:9px 20px;border-radius:var(--rsm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:all .15s}
+.mbtn.cancel{background:var(--cream2);color:var(--text2);border:1px solid var(--border)}
+.mbtn.ok{background:var(--accent);color:#fff}
+.mbtn.danger{background:var(--red);color:#fff}
+
+/* COPY BOX (clipboard result) */
+.copy-result-box{background:var(--cream2);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;margin-top:12px;font-size:12px;color:var(--text2);white-space:pre-line;line-height:1.7;-webkit-user-select:all;user-select:all;cursor:text}
+
+/* EDIT MODAL */
+.edit-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+.edit-ov.show{display:flex}
+.edit-box{background:#fff;border-radius:var(--radius);padding:22px 18px;max-width:440px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);margin:auto}
+
+/* CAL EVENT MODAL */
+.cal-ev-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:20px}
+.cal-ev-ov.show{display:flex}
+.cal-ev-box{background:#fff;border-radius:var(--radius);padding:22px 18px;max-width:380px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--brown2);color:#fff;padding:9px 22px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:all .3s;z-index:9999;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* PENDING BADGE */
+.pending-badge{display:inline-block;background:var(--red);color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;font-weight:700;margin-left:5px;vertical-align:middle}
+
+/* STAT ROW */
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.stat-c{background:var(--cream2);border-radius:var(--rsm);padding:10px 12px}
+.stat-c .sl{font-size:11px;color:var(--muted);margin-bottom:2px}
+.stat-c .sv{font-size:18px;font-weight:700;color:var(--brown2)}
+
+.empty{text-align:center;padding:28px;color:var(--muted);font-size:13px}
+.loading{text-align:center;padding:28px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOP BAR -->
+<div class="top-bar" id="topBar" style="display:none">
+  <h1>🏡 家庭公積金</h1>
+  <div class="top-bar-right">
+    <div class="role-badge" id="roleBadge"></div>
+    <button class="logout-btn" onclick="doLogout()">登出</button>
+  </div>
+</div>
+
+<!-- ===== LOGIN ===== -->
+<div id="screen-login" class="screen active">
+  <div class="login-wrap">
+    <div class="login-logo">🏡</div>
+    <div class="login-title">家庭公積金</div>
+    <div class="login-sub">請選擇身份</div>
+    <div class="role-grid">
+      <button class="role-btn" onclick="selectRole('媽')" id="rb-媽">
+        <div class="r-icon">👩</div><div class="r-name">媽</div><div class="r-perm">新增・檢視</div>
+      </button>
+      <button class="role-btn" onclick="selectRole('哥')" id="rb-哥">
+        <div class="r-icon">👦</div><div class="r-name">哥</div><div class="r-perm">新增・檢視</div>
+      </button>
+      <button class="role-btn" onclick="selectRole('姍')" id="rb-姍">
+        <div class="r-icon">🌸</div><div class="r-name">姍</div><div class="r-perm">完整管理員</div>
+      </button>
+      <button class="role-btn" onclick="guestLogin()" id="rb-訪客">
+        <div class="r-icon">🙂</div><div class="r-name">訪客</div><div class="r-perm">檢視今年</div>
+      </button>
+    </div>
+    <div class="pw-box" id="pwBox" style="display:none">
+      <label>密碼</label>
+      <input class="pw-input" type="password" id="pwInput" placeholder="••••" maxlength="6"
+        onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="btn-login" id="loginBtn" style="display:none" onclick="doLogin()">進入</button>
+    <div class="err-msg" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ===== HOME ===== -->
+<div id="screen-home" class="screen">
+  <div id="balCard" class="balance-card">
+    <div class="balance-label">目前餘額</div>
+    <div class="balance-amount" id="balAmt">計算中…</div>
+    <div id="diffNote" style="display:none" class="diff-note">
+      平均應補差額：<strong id="diffAmt"></strong> 元／人
+    </div>
+  </div>
+  <div class="main-btns">
+    <button class="main-btn" onclick="gotoScreen('screen-add')" id="btnAdd">
+      <span class="bi">📝</span>
+      <div style="flex:1;min-width:0"><div class="bt">回報收入支出</div><div class="bs">新增一筆紀錄</div></div>
+      <span class="ba">›</span>
+    </button>
+    <button class="main-btn" onclick="gotoScreen('screen-pending')" id="btnPending">
+      <span class="bi">⏳</span>
+      <div style="flex:1;min-width:0"><div class="bt">待確認回報紀錄</div><div class="bs">尚未審核的帳務</div></div>
+      <span class="pending-badge" id="pendingCnt" style="display:none;flex-shrink:0;margin-right:4px">0</span>
+      <span class="ba">›</span>
+    </button>
+    <button class="main-btn" onclick="gotoScreen('screen-this-year')">
+      <span class="bi">📊</span>
+      <div style="flex:1;min-width:0"><div class="bt">檢視今年花費紀錄</div><div class="bs" id="thisYearSub">載入中…</div></div>
+      <span class="ba">›</span>
+    </button>
+    <button class="main-btn" onclick="gotoScreen('screen-history')" id="btnHistory">
+      <span class="bi">📚</span>
+      <div style="flex:1;min-width:0"><div class="bt">檢視歷年花費紀錄</div><div class="bs">按年度分類</div></div>
+      <span class="ba">›</span>
+    </button>
+    <button class="main-btn" onclick="gotoScreen('screen-cal')" id="btnCal">
+      <span class="bi">🗓️</span>
+      <div style="flex:1;min-width:0"><div class="bt">行事曆</div><div class="bs">借宿、出國等活動</div></div>
+      <span class="ba">›</span>
+    </button>
+  </div>
+</div>
+
+<!-- ===== ADD ===== -->
+<div id="screen-add" class="screen">
+  <div class="sec-hdr">
+    <button class="back-btn" onclick="gotoScreen('screen-home')">‹</button>
+    <h2>回報收入／支出</h2>
+  </div>
+  <div class="form-card">
+    <div class="type-toggle">
+      <button class="type-btn ai" id="tBtnI" onclick="setType('income')">＋ 收入</button>
+      <button class="type-btn" id="tBtnE" onclick="setType('expense')">－ 支出</button>
+    </div>
+    <div id="roleSelRow" class="role-sel-row" style="display:none">
+      <label>代填角色</label>
+      <select id="fillRole"><option>媽</option><option>哥</option><option>姍</option></select>
+    </div>
+    <div class="fg" id="catGroup" style="display:none">
+      <label>費用性質</label>
+      <select id="fCat">
+        <option>水費</option><option>電費</option><option>瓦斯費</option>
+        <option>網路費</option><option>第四台</option><option>大採買</option><option>其他</option>
+      </select>
+    </div>
+    <div class="fg"><label>金額（元）</label><input type="number" id="fAmt" placeholder="0" min="0"/></div>
+    <div class="fg"><label>備註</label><textarea id="fNote" placeholder="選填備註…"></textarea></div>
+    <div class="fg"><label>發生日期</label><input type="date" id="fDate"/></div>
+    <button class="btn-submit" id="submitBtn" onclick="submitRecord()">送出</button>
+  </div>
+</div>
+
+<!-- ===== PENDING ===== -->
+<div id="screen-pending" class="screen">
+  <div class="sec-hdr">
+    <button class="back-btn" onclick="gotoScreen('screen-home')">‹</button>
+    <h2>待確認回報紀錄</h2>
+  </div>
+  <div id="pendingContent"><div class="loading">載入中…</div></div>
+</div>
+
+<!-- ===== THIS YEAR ===== -->
+<div id="screen-this-year" class="screen">
+  <div class="sec-hdr">
+    <button class="back-btn" onclick="gotoScreen('screen-home')">‹</button>
+    <h2 id="tyTitle">今年花費紀錄</h2>
+  </div>
+  <div class="stat-row" id="tyStats"></div>
+  <div class="filter-row">
+    <button class="fchip active" onclick="setFilter('all')" id="fa">全部</button>
+    <button class="fchip" onclick="setFilter('income')" id="fi">收入</button>
+    <button class="fchip" onclick="setFilter('expense')" id="fe">支出</button>
+  </div>
+  <div id="tyContent"><div class="loading">載入中…</div></div>
+  <div id="tyAdmin" style="display:none">
+    <div class="transfer-sec">
+      <button class="btn-export" onclick="exportExcel('this-year')">📥 導出 Excel 報表</button>
+      <button class="btn-transfer" onclick="openTransfer()">📦 年度結轉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HISTORY ===== -->
+<div id="screen-history" class="screen">
+  <div class="sec-hdr">
+    <button class="back-btn" onclick="gotoScreen('screen-home')">‹</button>
+    <h2>歷年花費紀錄</h2>
+  </div>
+  <div class="year-tabs" id="histTabs"></div>
+  <div id="histContent"><div class="empty">尚無歷史資料</div></div>
+  <div id="histAdmin" style="display:none">
+    <div class="transfer-sec">
+      <button class="btn-export" onclick="exportExcel('history')">📥 導出 Excel 報表</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CALENDAR ===== -->
+<div id="screen-cal" class="screen">
+  <div class="sec-hdr">
+    <button class="back-btn" onclick="gotoScreen('screen-home')">‹</button>
+    <h2>行事曆</h2>
+    <button id="btnAddEvent" onclick="openCalEventForm()" style="margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:var(--rsm);padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">＋ 新增</button>
+  </div>
+  <div class="cal-wrap" id="calWrap"></div>
+</div>
+
+<!-- ===== CONFIRM MODAL ===== -->
+<div class="modal-ov" id="modalOv">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div id="copyResultWrap" style="display:none">
+      <div class="copy-result-box" id="copyResultBox"></div>
+    </div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="mbtn cancel" onclick="closeModal()">關閉</button>
+      <button class="mbtn ok" id="modalOkBtn" style="display:none">確認</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EDIT MODAL ===== -->
+<div class="edit-ov" id="editOv">
+  <div class="edit-box">
+    <div class="modal-title" style="margin-bottom:14px">✏️ 修改紀錄</div>
+    <div class="fg"><label>類型</label>
+      <select id="eType" onchange="document.getElementById('eCatG').style.display=this.value==='expense'?'block':'none'">
+        <option value="income">收入</option><option value="expense">支出</option>
+      </select>
+    </div>
+    <div class="fg" id="eCatG"><label>費用性質</label>
+      <select id="eCat"><option>水費</option><option>電費</option><option>瓦斯費</option><option>網路費</option><option>第四台</option><option>大採買</option><option>其他</option></select>
+    </div>
+    <div class="fg"><label>金額</label><input type="number" id="eAmt"/></div>
+    <div class="fg"><label>備註</label><textarea id="eNote"></textarea></div>
+    <div class="fg"><label>發生日期</label><input type="date" id="eDate"/></div>
+    <div class="fg"><label>角色</label>
+      <select id="eRole"><option>媽</option><option>哥</option><option>姍</option><option>訪客</option></select>
+    </div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="mbtn cancel" onclick="closeEdit()">取消</button>
+      <button class="mbtn ok" onclick="saveEdit()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CALENDAR EVENT MODAL ===== -->
+<div class="cal-ev-ov" id="calEvOv">
+  <div class="cal-ev-box">
+    <div class="modal-title" id="calEvTitle" style="margin-bottom:14px">📅 新增活動</div>
+    <div class="fg"><label>活動類型</label>
+      <select id="evType">
+        <option value="guest">借宿</option>
+        <option value="away">出國／不在家</option>
+        <option value="other">其他</option>
+      </select>
+    </div>
+    <div class="fg"><label>登記人</label>
+      <select id="evPerson"><option>媽</option><option>哥</option><option>姍</option><option>其他</option></select>
+    </div>
+    <div class="fg"><label>開始日期</label><input type="date" id="evStart"/></div>
+    <div class="fg"><label>結束日期</label><input type="date" id="evEnd"/></div>
+    <div class="fg"><label>備註</label><input type="text" id="evNote" placeholder="例：田中來訪、去日本"/></div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="mbtn cancel" onclick="closeCalEvent()">取消</button>
+      <button class="mbtn ok" id="calEvSaveBtn" onclick="saveCalEvent()">儲存</button>
+      <button class="mbtn danger" id="calEvDelBtn" style="display:none" onclick="deleteCalEvent()">刪除</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONSTANTS & STATE
+// ============================================================
+const PASSWORDS = { '媽':'0915', '哥':'0311', '姍':'0530' };
+const THIS_YEAR = new Date().getFullYear();
+const TODAY = new Date().toISOString().split('T')[0];
+
+let currentRole = null;
+let currentType = 'income';
+let currentFilter = 'all';
+let currentHistYear = null;
+let editingId = null;
+let editingIsHistory = false;
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-based
+let calEvents = [];
+let editingCalId = null;
+let pendingModalAction = null;
+
+let allRecords = [];   // records collection (this year + unconfirmed)
+let histRecords = [];  // history collection
+let pendingCount = 0;
+
+// ============================================================
+// UTILS
+// ============================================================
+function showToast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function fmt(n) { return Number(n).toLocaleString('zh-TW'); }
+function fmtDate(d) { return d ? d.replace(/-/g,'/') : ''; }
+function mdFmt(dateStr) {
+  if (!dateStr) return '';
+  const [,m,d] = dateStr.split('-');
+  return `${parseInt(m)}月${parseInt(d)}日`;
+}
+function nowDateStr() { return TODAY; }
+function getDB() { return window._db; }
+function fb() { return window._fb; }
+async function waitDB() {
+  if (window._dbReady) return;
+  return new Promise(r => document.addEventListener('dbReady', r, {once:true}));
+}
+function getCollName(date) {
+  return (date && date.substring(0,4) < String(THIS_YEAR)) ? 'history' : 'records';
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+function selectRole(role) {
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('rb-'+role)?.classList.add('selected');
+  currentRole = role;
+  document.getElementById('loginErr').textContent = '';
+  document.getElementById('pwBox').style.display = 'block';
+  document.getElementById('loginBtn').style.display = 'block';
+  setTimeout(() => document.getElementById('pwInput').focus(), 100);
+}
+function guestLogin() {
+  currentRole = '訪客';
+  afterLogin();
+}
+function doLogin() {
+  if (!currentRole) { document.getElementById('loginErr').textContent = '請先選擇身份'; return; }
+  const pw = document.getElementById('pwInput').value;
+  if (pw !== PASSWORDS[currentRole]) {
+    document.getElementById('loginErr').textContent = '密碼錯誤';
+    document.getElementById('pwInput').value = '';
+    return;
+  }
+  afterLogin();
+}
+function afterLogin() {
+  document.getElementById('topBar').style.display = 'flex';
+  document.getElementById('roleBadge').textContent = currentRole;
+  // Hide buttons for guest
+  if (currentRole === '訪客') {
+    document.getElementById('btnAdd').style.display = 'none';
+    document.getElementById('btnPending').style.display = 'none';
+    document.getElementById('btnHistory').style.display = 'none';
+    document.getElementById('btnCal').style.display = 'none';
+  }
+  gotoScreen('screen-home');
+  loadAll();
+}
+function doLogout() {
+  currentRole = null; allRecords = []; histRecords = [];
+  document.getElementById('topBar').style.display = 'none';
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwBox').style.display = 'none';
+  document.getElementById('loginBtn').style.display = 'none';
+  document.getElementById('btnAdd').style.display = '';
+  document.getElementById('btnPending').style.display = '';
+  document.getElementById('btnHistory').style.display = '';
+  document.getElementById('btnCal').style.display = '';
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  gotoScreen('screen-login');
+}
+
+// ============================================================
+// SCREEN NAV
+// ============================================================
+function gotoScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  if (id==='screen-home') refreshHome();
+  if (id==='screen-add') initAddForm();
+  if (id==='screen-pending') renderPending();
+  if (id==='screen-this-year') renderThisYear();
+  if (id==='screen-history') renderHistory();
+  if (id==='screen-cal') renderCal();
+}
+
+// ============================================================
+// LOAD DATA
+// ============================================================
+async function loadAll() {
+  await waitDB();
+  const { collection, getDocs, query, orderBy } = fb();
+  const db = getDB();
+  try {
+    const [rSnap, hSnap] = await Promise.all([
+      getDocs(query(collection(db,'records'), orderBy('date','desc'))),
+      getDocs(query(collection(db,'history'), orderBy('date','desc')))
+    ]);
+    allRecords = rSnap.docs.map(d => ({id:d.id,...d.data()}));
+    histRecords = hSnap.docs.map(d => ({id:d.id,...d.data()}));
+    updatePendingBadge();
+    refreshHome();
+    const cs = document.querySelector('.screen.active')?.id;
+    if (cs==='screen-pending') renderPending();
+    if (cs==='screen-this-year') renderThisYear();
+    if (cs==='screen-history') renderHistory();
+  } catch(e) {
+    console.error(e);
+    showToast('⚠️ 資料載入失敗，請確認 Firebase 設定');
+  }
+}
+
+async function loadCalEvents() {
+  await waitDB();
+  const { collection, getDocs } = fb();
+  try {
+    const snap = await getDocs(collection(getDB(),'calEvents'));
+    calEvents = snap.docs.map(d => ({id:d.id,...d.data()}));
+  } catch(e) { console.error(e); }
+}
+
+function updatePendingBadge() {
+  const mine = allRecords.filter(r => !r.confirmed && !r.deleted);
+  let cnt;
+  if (currentRole === '姍') cnt = mine.length;
+  else cnt = mine.filter(r => r.role === currentRole).length;
+  pendingCount = cnt;
+  const el = document.getElementById('pendingCnt');
+  if (el) { el.textContent = cnt; el.style.display = cnt > 0 ? 'inline-block' : 'none'; }
+}
+
+// ============================================================
+// HOME
+// ============================================================
+function refreshHome() {
+  // Balance = confirmed income - confirmed expense across all time
+  const confirmed = [...allRecords, ...histRecords].filter(r => r.confirmed && !r.deleted);
+  const inc = confirmed.filter(r=>r.type==='income').reduce((s,r)=>s+Number(r.amount||0),0);
+  const exp = confirmed.filter(r=>r.type==='expense').reduce((s,r)=>s+Number(r.amount||0),0);
+  const bal = inc - exp;
+
+  const amtEl = document.getElementById('balAmt');
+  amtEl.textContent = (bal>=0?'':'- ') + '$' + fmt(Math.abs(bal));
+  amtEl.className = 'balance-amount' + (bal<0?' neg':'');
+
+  const diff = document.getElementById('diffNote');
+  if (bal<0) {
+    const d = Math.ceil((0-bal)/3/10)*10;
+    document.getElementById('diffAmt').textContent = fmt(d);
+    diff.style.display = 'block';
+  } else { diff.style.display = 'none'; }
+
+  // This year subtitle
+  const tyRecs = allRecords.filter(r=>r.date&&r.date.startsWith(String(THIS_YEAR))&&r.confirmed&&!r.deleted);
+  const tyI = tyRecs.filter(r=>r.type==='income').reduce((s,r)=>s+Number(r.amount||0),0);
+  const tyE = tyRecs.filter(r=>r.type==='expense').reduce((s,r)=>s+Number(r.amount||0),0);
+  const sub = document.getElementById('thisYearSub');
+  if (sub) sub.textContent = `今年收入 $${fmt(tyI)}・支出 $${fmt(tyE)}`;
+
+  updatePendingBadge();
+}
+
+// ============================================================
+// ADD FORM
+// ============================================================
+function initAddForm() {
+  document.getElementById('fDate').value = TODAY;
+  document.getElementById('fAmt').value = '';
+  document.getElementById('fNote').value = '';
+  setType('income');
+  const rRow = document.getElementById('roleSelRow');
+  if (currentRole==='姍') {
+    rRow.style.display='flex';
+    document.getElementById('fillRole').value='姍';
+  } else { rRow.style.display='none'; }
+}
+function setType(t) {
+  currentType = t;
+  document.getElementById('tBtnI').className = 'type-btn' + (t==='income'?' ai':'');
+  document.getElementById('tBtnE').className = 'type-btn' + (t==='expense'?' ae':'');
+  document.getElementById('catGroup').style.display = t==='expense' ? 'block' : 'none';
+}
+async function submitRecord() {
+  const amount = parseFloat(document.getElementById('fAmt').value);
+  if (!amount||amount<=0) { showToast('請輸入有效金額'); return; }
+  const date = document.getElementById('fDate').value;
+  if (!date) { showToast('請選擇日期'); return; }
+  const note = document.getElementById('fNote').value.trim();
+  const category = currentType==='expense' ? document.getElementById('fCat').value : '';
+
+  let role, proxyNote = '';
+  if (currentRole==='姍') {
+    const selected = document.getElementById('fillRole').value;
+    role = selected;
+    if (selected !== '姍') proxyNote = '(姍代)';
+  } else { role = currentRole; }
+
+  const finalNote = note ? note + proxyNote : proxyNote;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='送出中…';
+  try {
+    await waitDB();
+    const { collection, addDoc } = fb();
+    await addDoc(collection(getDB(),'records'), {
+      type: currentType, amount, date, note: finalNote,
+      category, role, confirmed: false, deleted: false,
+      createdAt: new Date().toISOString(),
+      reportDate: date
+    });
+    showToast('✅ 已成功送出！');
+    await loadAll();
+    setTimeout(() => gotoScreen('screen-home'), 700);
+  } catch(e) { console.error(e); showToast('❌ 送出失敗'); }
+  finally { btn.disabled=false; btn.textContent='送出'; }
+}
+
+// ============================================================
+// PENDING
+// ============================================================
+function renderPending() {
+  const container = document.getElementById('pendingContent');
+  let recs = allRecords.filter(r => !r.deleted);
+  // deleted ones that have audit log — show as log entries for non-admin
+  const deletedLogs = allRecords.filter(r => r.deleted && r.auditLog);
+
+  let pending, logItems;
+  if (currentRole==='姍') {
+    pending = recs.filter(r => !r.confirmed);
+    logItems = deletedLogs;
+  } else {
+    pending = recs.filter(r => !r.confirmed && r.role===currentRole);
+    logItems = deletedLogs.filter(r => r.role===currentRole);
+  }
+
+  // Sort by date desc
+  pending = [...pending].sort((a,b) => b.date > a.date ? 1 : -1);
+  logItems = [...logItems].sort((a,b) => b.date > a.date ? 1 : -1);
+
+  if (pending.length===0 && logItems.length===0) {
+    container.innerHTML='<div class="empty">✅ 目前沒有待確認的紀錄</div>'; return;
+  }
+
+  let html = '';
+
+  if (pending.length > 0) {
+    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">待審核 ${pending.length} 筆</div>`;
+    pending.forEach(r => { html += renderPendingItem(r); });
+  }
+
+  if (logItems.length > 0) {
+    html += `<div style="font-size:12px;color:var(--muted);margin:14px 0 8px">已處理紀錄（存證）</div>`;
+    logItems.forEach(r => { html += renderDeletedLogItem(r); });
+  }
+
+  container.innerHTML = html;
+}
+
+function renderPendingItem(r) {
+  const isAdmin = currentRole==='姍';
+  const typeLabel = r.type==='income'?'收入':'支出';
+  const catText = r.category ? `・${r.category}` : '';
+  const amtSign = r.type==='income'?'+':'-';
+  const audit = r.auditLog ? `<div class="raudit">姍於 ${mdFmt(r.auditLog.date)} ${r.auditLog.action}</div>` : '';
+
+  let adminHtml = '';
+  if (isAdmin) {
+    adminHtml = `<div class="adm-acts">
+      <button class="act-btn confirm" onclick="confirmRecord('${r.id}')">✓ 確認撥款</button>
+      <button class="act-btn edit" onclick="openEdit('${r.id}',false)">✏️ 修改</button>
+      <button class="act-btn del" onclick="deletePendingRecord('${r.id}')">🗑 刪除</button>
+    </div>`;
+  }
+
+  return `<div class="rec unconf" id="rec-${r.id}">
+    <div class="rec-top">
+      <span class="rtype ${r.type}">${typeLabel}${catText}</span>
+      <span class="ramt ${r.type}">${amtSign}$${fmt(r.amount)}</span>
+    </div>
+    <div class="rmeta">
+      <span>${fmtDate(r.date)}</span>
+      <span class="rrole">${r.role||''}</span>
+      <span class="runconf">⏳ 待審核</span>
+    </div>
+    ${r.note ? `<div class="rnote">${r.note}</div>` : ''}
+    ${audit}
+    ${adminHtml}
+  </div>`;
+}
+
+function renderDeletedLogItem(r) {
+  return `<div class="rec deleted-log">
+    <div class="rec-top">
+      <span class="rtype deleted">${r.type==='income'?'收入':'支出'}${r.category?`・${r.category}`:''} [已刪除]</span>
+      <span class="ramt deleted">$${fmt(r.amount)}</span>
+    </div>
+    <div class="rmeta"><span>${fmtDate(r.date)}</span><span class="rrole">${r.role||''}</span></div>
+    ${r.note ? `<div class="rnote">${r.note}</div>` : ''}
+    ${r.auditLog ? `<div class="raudit">姍於 ${mdFmt(r.auditLog.date)} ${r.auditLog.action}</div>` : ''}
+  </div>`;
+}
+
+// ============================================================
+// CONFIRM RECORD (姍)
+// ============================================================
+async function confirmRecord(id) {
+  await waitDB();
+  const r = allRecords.find(x=>x.id===id);
+  if (!r) return;
+  try {
+    const { doc, updateDoc } = fb();
+    const confirmDate = TODAY;
+    await updateDoc(doc(getDB(),'records',id), {
+      confirmed: true,
+      confirmedDate: confirmDate,
+      confirmedBy: '姍'
+    });
+    showToast('✅ 已確認');
+    await loadAll();
+    renderPending();
+    // Build copy text for expenses
+    if (r.type==='expense') {
+      const txt = `支出審核完成清單：${mdFmt(r.date)}${r.category||''}$${fmt(r.amount)} 已於${mdFmt(confirmDate)}審核完成撥款，請留意戶頭到帳`;
+      tryCopy(txt);
+      openCopyModal('✅ 確認撥款清單已複製', '可直接貼到群組公告', txt);
+    }
+  } catch(e) { console.error(e); showToast('操作失敗'); }
+}
+
+// Confirm multiple selected (batch)
+async function confirmBatch(ids) {
+  await waitDB();
+  const { doc, updateDoc } = fb();
+  const db = getDB();
+  const confirmDate = TODAY;
+  const expenseItems = [];
+  for (const id of ids) {
+    const r = allRecords.find(x=>x.id===id);
+    await updateDoc(doc(db,'records',id), { confirmed:true, confirmedDate:confirmDate, confirmedBy:'姍' });
+    if (r && r.type==='expense') expenseItems.push(r);
+  }
+  await loadAll();
+  renderPending();
+  if (expenseItems.length>0) {
+    const lines = expenseItems.map(r=>`${mdFmt(r.date)}${r.category||''}$${fmt(r.amount)}`).join('、');
+    const txt = `支出審核完成清單：${lines} 已於${mdFmt(confirmDate)}審核完成撥款，請留意戶頭到帳`;
+    tryCopy(txt);
+    openCopyModal('✅ 確認撥款清單已複製','可直接貼到群組公告', txt);
+  } else {
+    showToast(`✅ 已確認 ${ids.length} 筆`);
+  }
+}
+
+function tryCopy(text) {
+  try { navigator.clipboard.writeText(text); } catch(e) {}
+}
+
+function openCopyModal(title, body, copyText) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent = body;
+  document.getElementById('copyResultBox').textContent = copyText;
+  document.getElementById('copyResultWrap').style.display = 'block';
+  document.getElementById('modalOkBtn').style.display = 'none';
+  document.getElementById('modalOv').classList.add('show');
+}
+
+// ============================================================
+// DELETE PENDING (姍)
+// ============================================================
+async function deletePendingRecord(id) {
+  const r = allRecords.find(x=>x.id===id);
+  if (!r) return;
+  openConfirmModal('確認刪除', `確定刪除此筆「${r.type==='income'?'收入':'支出'} $${fmt(r.amount)}」紀錄？\n\n此紀錄將標記為已刪除，並顯示存證於雙方介面。`, async () => {
+    await waitDB();
+    const { doc, updateDoc } = fb();
+    await updateDoc(doc(getDB(),'records',id), {
+      deleted: true,
+      auditLog: { date: TODAY, action: '刪除此紀錄', by:'姍' }
+    });
+    showToast('🗑 已刪除並記錄存證');
+    await loadAll();
+    renderPending();
+    renderThisYear();
+  });
+}
+
+// ============================================================
+// THIS YEAR
+// ============================================================
+function renderThisYear() {
+  const title = document.getElementById('tyTitle');
+  if (title) title.textContent = `${THIS_YEAR} 年度紀錄`;
+
+  const isAdmin = currentRole==='姍';
+  document.getElementById('tyAdmin').style.display = isAdmin ? 'block' : 'none';
+
+  // Show all records (confirmed=white, unconfirmed=grey), exclude deleted ones
+  let recs = allRecords.filter(r => r.date&&r.date.startsWith(String(THIS_YEAR))&&!r.deleted);
+  if (currentFilter==='income') recs = recs.filter(r=>r.type==='income');
+  if (currentFilter==='expense') recs = recs.filter(r=>r.type==='expense');
+  // Sort by reportDate desc
+  recs = [...recs].sort((a,b) => (b.reportDate||b.date) > (a.reportDate||a.date) ? 1 : -1);
+
+  // Stats (confirmed only)
+  const conf = allRecords.filter(r=>r.date&&r.date.startsWith(String(THIS_YEAR))&&r.confirmed&&!r.deleted);
+  const si = conf.filter(r=>r.type==='income').reduce((s,r)=>s+Number(r.amount||0),0);
+  const se = conf.filter(r=>r.type==='expense').reduce((s,r)=>s+Number(r.amount||0),0);
+  document.getElementById('tyStats').innerHTML = `
+    <div class="stat-c"><div class="sl">已確認收入</div><div class="sv" style="color:var(--green)">+$${fmt(si)}</div></div>
+    <div class="stat-c"><div class="sl">已確認支出</div><div class="sv" style="color:var(--red)">-$${fmt(se)}</div></div>`;
+
+  const container = document.getElementById('tyContent');
+  if (recs.length===0) { container.innerHTML='<div class="empty">目前沒有紀錄</div>'; return; }
+
+  // Group by month
+  const months = {};
+  recs.forEach(r => {
+    const ym = r.date.substring(0,7);
+    if (!months[ym]) months[ym] = [];
+    months[ym].push(r);
+  });
+
+  let html = '';
+  Object.keys(months).sort((a,b)=>b>a?1:-1).forEach(ym => {
+    const mAll = allRecords.filter(r=>r.date&&r.date.startsWith(ym)&&r.confirmed&&!r.deleted);
+    const mI = mAll.filter(r=>r.type==='income').reduce((s,r)=>s+Number(r.amount||0),0);
+    const mE = mAll.filter(r=>r.type==='expense').reduce((s,r)=>s+Number(r.amount||0),0);
+    const mNet = mI - mE;
+    const [y,m] = ym.split('-');
+    html += `<div class="month-bar" onclick="toggleMonth('m${ym.replace('-','')}')">
+      <div class="mt">${y}年${parseInt(m)}月</div>
+      <div class="mn ${mNet>=0?'pos':'neg'}">${mNet>=0?'+':''}${fmt(mNet)}</div>
+    </div>
+    <div id="m${ym.replace('-','')}">`;
+    months[ym].forEach(r => { html += renderRecordRow(r, 'this-year'); });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function renderRecordRow(r, src) {
+  const isAdmin = currentRole==='姍';
+  const typeLabel = r.type==='income'?'收入':'支出';
+  const catText = r.category?`・${r.category}`:'';
+  const amtSign = r.type==='income'?'+':'-';
+  const confBadge = r.confirmed
+    ? `<span class="rconfd">✓ 已確認</span>${r.confirmedDate?`<span class="rdate-badge">審核：${fmtDate(r.confirmedDate)}</span>`:''}`
+    : `<span class="runconf">⏳ 待審核</span>`;
+
+  let adminHtml = '';
+  if (isAdmin) {
+    adminHtml = `<div class="adm-acts">
+      ${!r.confirmed ? `<button class="act-btn confirm" onclick="confirmRecord('${r.id}')">✓ 確認</button>` : `<button class="act-btn edit" onclick="unconfirmRecord('${r.id}')">↩ 取消確認</button>`}
+      <button class="act-btn edit" onclick="openEdit('${r.id}',${src==='history'})">✏️</button>
+      <button class="act-btn del" onclick="deleteRecord('${r.id}',${src==='history'})">🗑</button>
+    </div>`;
+  }
+
+  return `<div class="rec${r.confirmed?'':' unconf'}" id="rec-${r.id}">
+    <div class="rec-top">
+      <span class="rtype ${r.type}">${typeLabel}${catText}</span>
+      <span class="ramt ${r.type}">${amtSign}$${fmt(r.amount)}</span>
+    </div>
+    <div class="rmeta">
+      <span>${fmtDate(r.date)}</span>
+      <span class="rrole">${r.role||''}</span>
+      ${confBadge}
+    </div>
+    ${r.note ? `<div class="rnote">${r.note}</div>` : ''}
+    ${adminHtml}
+  </div>`;
+}
+
+function toggleMonth(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  ['all','income','expense'].forEach(x => document.getElementById('f'+x[0])?.classList.remove('active'));
+  document.getElementById('f'+f[0])?.classList.add('active');
+  renderThisYear();
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+async function renderHistory() {
+  const isAdmin = currentRole==='姍';
+  document.getElementById('histAdmin').style.display = isAdmin ? 'block' : 'none';
+
+  const tabsEl = document.getElementById('histTabs');
+  const contentEl = document.getElementById('histContent');
+
+  if (histRecords.length===0) {
+    tabsEl.innerHTML=''; contentEl.innerHTML='<div class="empty">尚無歷史資料</div>'; return;
+  }
+
+  const years = [...new Set(histRecords.map(r=>r.date?.substring(0,4)).filter(Boolean))].sort((a,b)=>b-a);
+  if (!currentHistYear||!years.includes(String(currentHistYear))) currentHistYear = years[0];
+
+  tabsEl.innerHTML = years.map(y =>
+    `<button class="year-tab${String(y)===String(currentHistYear)?' active':''}" onclick="selectHistYear('${y}')">${y}年</button>`
+  ).join('');
+
+  const yRecs = histRecords.filter(r=>r.date?.startsWith(String(currentHistYear))&&!r.deleted)
+    .sort((a,b) => (b.reportDate||b.date) > (a.reportDate||a.date) ? 1 : -1);
+
+  const si = yRecs.filter(r=>r.type==='income'&&r.confirmed).reduce((s,r)=>s+Number(r.amount||0),0);
+  const se = yRecs.filter(r=>r.type==='expense'&&r.confirmed).reduce((s,r)=>s+Number(r.amount||0),0);
+
+  let html = `<div class="balance-card" style="background:linear-gradient(135deg,#7A6555,#8B6F4E);margin-bottom:14px">
+    <div class="balance-label">${currentHistYear} 年度總結</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">
+      <div><div style="font-size:11px;opacity:.8">收入</div><div style="font-size:17px;font-weight:700">+$${fmt(si)}</div></div>
+      <div><div style="font-size:11px;opacity:.8">支出</div><div style="font-size:17px;font-weight:700">-$${fmt(se)}</div></div>
+      <div><div style="font-size:11px;opacity:.8">淨額</div><div style="font-size:17px;font-weight:700;color:${(si-se)>=0?'#B8F0B8':'#FFB3B3'}">${(si-se)>=0?'+':''}$${fmt(si-se)}</div></div>
+    </div>
+  </div>`;
+
+  yRecs.forEach(r => { html += renderRecordRow(r, 'history'); });
+  contentEl.innerHTML = html;
+}
+
+function selectHistYear(y) {
+  currentHistYear = y;
+  renderHistory();
+}
+
+async function unconfirmRecord(id) {
+  await waitDB();
+  const { doc, updateDoc } = fb();
+  await updateDoc(doc(getDB(),'records',id), { confirmed:false, confirmedDate:null });
+  showToast('已取消確認');
+  await loadAll(); renderThisYear();
+}
+
+async function deleteRecord(id, isHistory) {
+  openConfirmModal('確認刪除','確定要永久刪除這筆紀錄嗎？', async () => {
+    await waitDB();
+    const { doc, deleteDoc } = fb();
+    const coll = isHistory ? 'history' : 'records';
+    await deleteDoc(doc(getDB(),coll,id));
+    showToast('🗑 已刪除');
+    await loadAll();
+    if (isHistory) renderHistory(); else renderThisYear();
+  });
+}
+
+// ============================================================
+// EDIT
+// ============================================================
+function openEdit(id, isHistory) {
+  editingId = id; editingIsHistory = isHistory;
+  const recs = isHistory ? histRecords : allRecords;
+  const r = recs.find(x=>x.id===id);
+  if (!r) return;
+  document.getElementById('eType').value = r.type;
+  document.getElementById('eCatG').style.display = r.type==='expense'?'block':'none';
+  document.getElementById('eCat').value = r.category||'其他';
+  document.getElementById('eAmt').value = r.amount;
+  document.getElementById('eNote').value = r.note||'';
+  document.getElementById('eDate').value = r.date;
+  document.getElementById('eRole').value = r.role||'訪客';
+  document.getElementById('editOv').classList.add('show');
+}
+function closeEdit() { document.getElementById('editOv').classList.remove('show'); editingId=null; }
+async function saveEdit() {
+  if (!editingId) return;
+  const type = document.getElementById('eType').value;
+  const amount = parseFloat(document.getElementById('eAmt').value);
+  if (!amount||amount<=0) { showToast('請輸入有效金額'); return; }
+  const date = document.getElementById('eDate').value;
+  const note = document.getElementById('eNote').value.trim();
+  const category = type==='expense' ? document.getElementById('eCat').value : '';
+  const role = document.getElementById('eRole').value;
+
+  await waitDB();
+  const { doc, updateDoc } = fb();
+  const coll = editingIsHistory ? 'history' : 'records';
+  const auditNote = `修改為${category||type==='income'?'收入':type} $${fmt(amount)}`;
+  await updateDoc(doc(getDB(),coll,editingId), {
+    type, amount, date, note, category, role,
+    auditLog: { date:TODAY, action: auditNote, by:'姍' }
+  });
+  showToast('✅ 已更新');
+  closeEdit();
+  await loadAll();
+  if (editingIsHistory) renderHistory(); else { renderThisYear(); renderPending(); }
+}
+
+// ============================================================
+// YEAR TRANSFER
+// ============================================================
+function openTransfer() {
+  const years = [...new Set(allRecords.map(r=>r.date?.substring(0,4)).filter(Boolean))].sort();
+  if (years.length===0) { showToast('今年無資料可結轉'); return; }
+  const targetYear = years[0];
+
+  // Block if unconfirmed in that year
+  const unconf = allRecords.filter(r=>r.date?.startsWith(targetYear)&&!r.confirmed&&!r.deleted);
+  if (unconf.length>0) {
+    openInfoModal('⚠️ 無法結轉',`尚有 ${unconf.length} 筆 ${targetYear} 年資料未審核，請先處理後再執行年度結轉。`);
+    return;
+  }
+
+  openConfirmModal(
+    '年度結轉',
+    `確認將 ${targetYear}/01/01 ~ ${targetYear}/12/31 區間資料搬移至歷年花費紀錄？\n\n系統將先自動導出 Excel 備份，並計算結餘作為上期結轉存入新年度。`,
+    async () => {
+      // First export
+      exportExcel('this-year', targetYear);
+      setTimeout(async () => {
+        await doTransfer(targetYear);
+      }, 800);
+    }
+  );
+}
+
+async function doTransfer(year) {
+  await waitDB();
+  const toMove = allRecords.filter(r=>r.date?.startsWith(year)&&!r.deleted);
+  if (toMove.length===0) { showToast('無資料可結轉'); return; }
+
+  const inc = toMove.filter(r=>r.type==='income').reduce((s,r)=>s+Number(r.amount||0),0);
+  const exp = toMove.filter(r=>r.type==='expense').reduce((s,r)=>s+Number(r.amount||0),0);
+  const surplus = inc - exp;
+
+  const { collection, addDoc, doc, deleteDoc } = fb();
+  const db = getDB();
+  for (const r of toMove) {
+    const {id, ...data} = r;
+    await addDoc(collection(db,'history'), data);
+    await deleteDoc(doc(db,'records',id));
+  }
+  // Add carryover as first income of new year
+  if (surplus !== 0) {
+    await addDoc(collection(db,'records'), {
+      type: surplus>0?'income':'expense',
+      amount: Math.abs(surplus),
+      date: `${parseInt(year)+1}-01-01`,
+      reportDate: `${parseInt(year)+1}-01-01`,
+      note: `${year}年度上期結轉`,
+      category: '',
+      role: '姍',
+      confirmed: true,
+      confirmedDate: TODAY,
+      confirmedBy: '姍',
+      deleted: false,
+      createdAt: new Date().toISOString()
+    });
+  }
+  showToast(`✅ 已結轉 ${year} 年度，共 ${toMove.length} 筆`);
+  await loadAll();
+  renderThisYear();
+}
+
+// ============================================================
+// EXCEL EXPORT
+// ============================================================
+function exportExcel(src, yearFilter) {
+  if (!window.XLSX) { showToast('XLSX 尚未載入'); return; }
+  let recs;
+  const yr = yearFilter || currentHistYear || THIS_YEAR;
+  if (src==='history') {
+    recs = histRecords.filter(r=>!r.deleted&&r.date?.startsWith(String(yr)));
+  } else {
+    recs = allRecords.filter(r=>!r.deleted&&r.date?.startsWith(String(yr)));
+  }
+  // Sort by date ascending (old → new) for report readability
+  recs = [...recs].sort((a,b) => (a.reportDate||a.date) > (b.reportDate||b.date) ? 1 : -1);
+
+  const data = [['發生日期','類型','費用性質','金額','備註','回報人','審核完成日期','是否確認']];
+  recs.forEach(r => {
+    data.push([
+      fmtDate(r.date),
+      r.type==='income'?'收入':'支出',   // 收入與支出都輸出
+      r.category||'',
+      r.amount,
+      r.note||'',
+      r.role||'',
+      r.confirmedDate ? fmtDate(r.confirmedDate) : '',
+      r.confirmed ? '✓' : '待審核'
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:12},{wch:8},{wch:10},{wch:10},{wch:30},{wch:8},{wch:14},{wch:8}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, `${yr}年度`);
+  XLSX.writeFile(wb, `公積金_${yr}年度.xlsx`);
+  showToast('📥 Excel 已下載');
+}
+
+// ============================================================
+// CALENDAR
+// ============================================================
+async function renderCal() {
+  // Guest cannot view calendar
+  if (currentRole === '訪客') { gotoScreen('screen-home'); return; }
+  await loadCalEvents();
+  buildCal();
+  const canEdit = ['媽','哥','姍'].includes(currentRole);
+  document.getElementById('btnAddEvent').style.display = canEdit ? 'block' : 'none';
+}
+
+function buildCal() {
+  const months = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  const dows = ['日','一','二','三','四','五','六'];
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+
+  let html = `<div class="cal-header">
+    <button class="cal-nav" onclick="calPrev()">‹</button>
+    <h3>${calYear}年 ${months[calMonth]}</h3>
+    <button class="cal-nav" onclick="calNext()">›</button>
+  </div>
+  <div class="cal-grid">
+    ${dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')}`;
+
+  // Prev month days
+  for (let i=firstDay-1; i>=0; i--) {
+    html += `<div class="cal-day other-month"><div class="day-num">${daysInPrev-i}</div></div>`;
+  }
+  // Current month
+  for (let d=1; d<=daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr===TODAY;
+    const dayEvents = calEvents.filter(e => e.startDate<=dateStr && e.endDate>=dateStr);
+    let evHtml = dayEvents.map(e =>
+      `<div class="cal-event type-${e.type||'other'}" onclick="event.stopPropagation();viewCalEvent('${e.id}')">${e.note||e.person||''}</div>`
+    ).join('');
+    html += `<div class="cal-day${isToday?' today':''}" onclick="calDayClick('${dateStr}')">
+      <div class="day-num">${d}</div>${evHtml}
+    </div>`;
+  }
+  // Next month filler
+  const cells = firstDay + daysInMonth;
+  const remainder = cells % 7;
+  if (remainder > 0) {
+    for (let i=1; i<=7-remainder; i++) {
+      html += `<div class="cal-day other-month"><div class="day-num">${i}</div></div>`;
+    }
+  }
+  html += '</div>';
+  document.getElementById('calWrap').innerHTML = html;
+}
+
+function calPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} buildCal(); }
+function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} buildCal(); }
+function calDayClick(dateStr) { if(['媽','哥','姍'].includes(currentRole)) openCalEventForm(dateStr); }
+
+function openCalEventForm(dateStr) {
+  editingCalId = null;
+  document.getElementById('calEvTitle').textContent = '📅 新增活動';
+  document.getElementById('evStart').value = dateStr||TODAY;
+  document.getElementById('evEnd').value = dateStr||TODAY;
+  document.getElementById('evNote').value = '';
+  document.getElementById('evType').value = 'guest';
+  // Default person to currentRole; only 姍 can change it
+  const personSel = document.getElementById('evPerson');
+  personSel.value = currentRole === '姍' ? '姍' : currentRole;
+  personSel.disabled = currentRole !== '姍';
+  document.getElementById('calEvDelBtn').style.display = 'none';
+  document.getElementById('calEvOv').classList.add('show');
+}
+function viewCalEvent(id) {
+  const e = calEvents.find(x=>x.id===id);
+  if (!e) return;
+  const isAdmin = currentRole === '姍';
+  const isOwner = e.person === currentRole;
+  const canEdit = isAdmin || isOwner;
+
+  editingCalId = id;
+  document.getElementById('calEvTitle').textContent = canEdit ? '✏️ 編輯活動' : '📅 活動詳情';
+  document.getElementById('evType').value = e.type||'guest';
+  const personSel = document.getElementById('evPerson');
+  personSel.value = e.person||'媽';
+  // 姍 can change person; 媽/哥 see it locked
+  personSel.disabled = !isAdmin;
+  document.getElementById('evStart').value = e.startDate;
+  document.getElementById('evEnd').value = e.endDate;
+  document.getElementById('evNote').value = e.note||'';
+  // Lock all fields if just viewing
+  ['evType','evStart','evEnd','evNote'].forEach(fid => {
+    document.getElementById(fid).disabled = !canEdit;
+  });
+  document.getElementById('calEvSaveBtn').style.display = canEdit ? 'inline-block' : 'none';
+  document.getElementById('calEvDelBtn').style.display = canEdit ? 'block' : 'none';
+  document.getElementById('calEvOv').classList.add('show');
+}
+function closeCalEvent() { document.getElementById('calEvOv').classList.remove('show'); editingCalId=null; }
+async function saveCalEvent() {
+  await waitDB();
+  const { collection, addDoc, doc, updateDoc } = fb();
+  // Re-enable fields to read their values (they may be disabled for display)
+  ['evType','evStart','evEnd','evNote','evPerson'].forEach(fid => {
+    document.getElementById(fid).disabled = false;
+  });
+  const data = {
+    type: document.getElementById('evType').value,
+    person: document.getElementById('evPerson').value,
+    startDate: document.getElementById('evStart').value,
+    endDate: document.getElementById('evEnd').value,
+    note: document.getElementById('evNote').value.trim()
+  };
+  if (!data.startDate||!data.endDate) { showToast('請填寫日期'); return; }
+  if (editingCalId) {
+    await updateDoc(doc(getDB(),'calEvents',editingCalId), data);
+    showToast('✅ 已更新');
+  } else {
+    data.createdBy = currentRole;
+    await addDoc(collection(getDB(),'calEvents'), data);
+    showToast('✅ 已新增');
+  }
+  closeCalEvent();
+  await loadCalEvents();
+  buildCal();
+}
+async function deleteCalEvent() {
+  if (!editingCalId) return;
+  const e = calEvents.find(x=>x.id===editingCalId);
+  if (!e) return;
+  const isAdmin = currentRole==='姍';
+  const isOwner = e.person === currentRole;
+  if (!isAdmin && !isOwner) { showToast('僅可刪除自己的活動'); return; }
+  await waitDB();
+  const { doc, deleteDoc } = fb();
+  await deleteDoc(doc(getDB(),'calEvents',editingCalId));
+  showToast('🗑 已刪除');
+  closeCalEvent();
+  await loadCalEvents();
+  buildCal();
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openConfirmModal(title, body, onOk) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent = body;
+  document.getElementById('copyResultWrap').style.display = 'none';
+  document.getElementById('modalOkBtn').style.display = 'inline-block';
+  document.getElementById('modalOkBtn').textContent = '確認';
+  document.getElementById('modalOkBtn').onclick = () => { closeModal(); onOk(); };
+  document.getElementById('modalOv').classList.add('show');
+}
+function openInfoModal(title, body) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent = body;
+  document.getElementById('copyResultWrap').style.display = 'none';
+  document.getElementById('modalOkBtn').style.display = 'none';
+  document.getElementById('modalOv').classList.add('show');
+}
+function closeModal() { document.getElementById('modalOv').classList.remove('show'); }
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('screen-login').classList.add('active');
+});
+</script>
+</body>
+</html>
